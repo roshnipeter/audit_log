@@ -33,87 +33,63 @@ def get_data(index, query):
     return response
 
 
-def authenticate(token):
+def authenticate_(token):
     try:
         user_data = jwt.decode(token, app.config['SECRET_KEY'],  algorithms="HS256")
         return True
     except:
         return False
 
-def token_required(f):
-    @wraps(f)
+def authenticate(object):
+    @wraps(object)
     def decorated(*args, **kwargs):
-        token = None
-        # jwt is passed in the request header
-        if 'x-access-token' in request.headers:
-            token = request.headers['x-access-token']
-        # return 401 if token is not passed
+        token = request.headers.get('x-access-token')
         if not token:
-            return jsonify({'message' : 'Token is missing !!'}), 401
-  
+            response = {"success": False, "message":"Token missing"}, 401
+            return response
         try:
-            # decoding the payload to fetch the stored details
-            data = jwt.decode(token, app.config['SECRET_KEY'])
-            current_user = User.query\
-                .filter_by(public_id = data['public_id'])\
-                .first()
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
         except:
-            return jsonify({
-                'message' : 'Token is invalid !!'
-            }), 401
-        # returns the current logged in users contex to the routes
-        return  f(current_user, *args, **kwargs)
-  
+            response = {"success": False, "message":"Token missing"}, 401
+            return response
+        return  object(*args, **kwargs)
     return decorated
 
 
 @app.route('/audit',methods = ['POST'])
+@authenticate
 def add_audit():
-    token = request.headers.get('x-access-token')
-    if not token:
-        response = {"success": False, "message":"Token missing"}
+    data = request.get_json()
+    user_id = data.get('id')
+    action = data.get('action')
+    timestamp = datetime.now()
+    action_doc = data.get('action_doc')
+
+    if not (action and user_id and action_doc):
+        response = {"success":False, "message":"Field missing"}, 400
         return response
-    
-    if authenticate(token):
-        data = request.get_json()
-        user_id = data.get('id')
-        action = data.get('action')
-        timestamp = datetime.now()
-        action_doc = data.get('action_doc')
 
-        if not (action and user_id and action_doc):
-            response = {"success":False, "message":"Field missing"}
-            return response
-
-        es_obj = {
-            'date' : timestamp,
-            'action' : action,
-            'action_document' : action_doc,
-            'user_id' : user_id
-        }
-        try:
-            es.index(index = 'audit_logs', body = es_obj)
-            response = {"success":True, "message":"Audit added successfully!"}
-        except:
-            response = {"success":False, "message":"Audit not added."}  
-    else:
-        response = {"success": False, "message":"Invalid token."}
+    es_obj = {
+        'date' : timestamp,
+        'action' : action,
+        'action_document' : action_doc,
+        'user_id' : user_id
+    }
+    try:
+        es.index(index = 'audit_logs', body = es_obj)
+        response = {"success":True, "message":"Audit added successfully!"}, 200
+    except:
+        response = {"success":False, "message":"Audit not added."}, 401  
     return response
 
 
 @app.route('/audit',methods = ['GET'])
+@authenticate
 def get_audit():
     userId = request.args.get('id')
     action = request.args.get('action')
-    token = request.headers.get('x-access-token')
-    if not token:
-        response = {"success": False, "message":"Token missing."}, 404
-        return response
-    if authenticate(token):
-        query = query_builder.build_query(timerange = True, user_id = userId, action = action)
-        response = get_data("audit_logs", query)
-    else:
-        response = {"success": False, "message":"Invalid token."}, 401
+    query = query_builder.build_query(timerange = True, user_id = userId, action = action)
+    response = get_data("audit_logs", query)
     return response
 
 
