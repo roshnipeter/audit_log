@@ -4,10 +4,10 @@ This service is used to store and retrieve audit logs via HTTP requests. There a
 
 # Technologies used
 
-1. Python3 - Flask to render APIs
-2. Elasticsearch to store and retrieve data
-3. Kibana for visualising data
-4. JWT for authentication
+1. Python3, Flask -  Since the application is currently a single page app, preferred to use a lightweight framewrok like flask.
+2. Elasticsearch - Since its faster and has lesser latency as compared to traditional databases.
+3. Kibana for visualising data - Easier visualisation and playing around with the data.
+4. JWT for authentication - Since API requires token based authentication, JWT was the best option. This choice can be updated depending on future requirements.
 
 # Table of Contents
 
@@ -40,7 +40,9 @@ Structure of an ES document would be:
 - The POST method "/login" is used for user login. Upon successful login, token is generated, which is validated against for GET and POST **/audit** methods.
 
 # How to run the program?
-command to execute is **python audit_logger.py** The platform supports I've used are:
+command to execute is **python app.py** The platform supports I've used are:
 1. ElasticSearch - 7.10.2-SNAPSHOT
 2. Kibana - 7.10.2
 3. Postman - 9.15.6
+
+For CURL requests, please refer to curl_req.sh

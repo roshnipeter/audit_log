@@ -13,12 +13,12 @@ def authenticate(object):
     '''
     @wraps(object)
     def decorated(*args, **kwargs):
-        token = request.headers.get('x-access-token')
+        token = request.headers.get('Authorization')
         if not token:
             response = {"success": False, "message":"Token missing"}
             return response
         try:
-            data = jwt.decode(token, config.config['secret_key'], algorithms=config.config['algorithms'])
+            data = jwt.decode(token.split(" ")[1], config.config['secret_key'], algorithms=config.config['algorithms'])
         except:
             traceback.print_exc()
             response = {"success": False, "message":"Invalid token"}
