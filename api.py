@@ -1,13 +1,9 @@
-from distutils.command.config import config
-from http.client import REQUEST_TIMEOUT
 import os
-import traceback
 import flask
-from flask import request, jsonify, abort
+from flask import request
 from elasticsearch import Elasticsearch, helpers
 from datetime import datetime, timedelta
 import jwt
-from sqlalchemy import true
 import yaml
 import query_builder
 from  werkzeug.security import generate_password_hash, check_password_hash
@@ -23,26 +19,21 @@ app = flask.Flask(__name__)
 app.config['DEBUG'] = True
 app.config['SECRET_KEY'] = config['secret_key']
 
+
 def get_data(index, query):
     total_count = 0
     result_list = []
     for es_doc in helpers.scan(client=es, query=query, index=index, size=2000, scroll="5s"):
         result_list.append(es_doc["_source"])
         total_count += 1
-    response = {'success': True, 'data':result_list, 'count':total_count} if result_list else {'success': False, 'data':result_list, 'count':total_count}
-    return response
+    print(result_list)
+    return (result_list, total_count)
 
-
-def authenticate_(token):
-    try:
-        user_data = jwt.decode(token, app.config['SECRET_KEY'],  algorithms="HS256")
-        return True
-    except:
-        return False
 
 def authenticate(object):
     @wraps(object)
     def decorated(*args, **kwargs):
+        print(request.headers)
         token = request.headers.get('x-access-token')
         if not token:
             response = {"success": False, "message":"Token missing"}, 401
@@ -50,7 +41,7 @@ def authenticate(object):
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
         except:
-            response = {"success": False, "message":"Token missing"}, 401
+            response = {"success": False, "message":"Invalid token"}, 401
             return response
         return  object(*args, **kwargs)
     return decorated
@@ -89,7 +80,11 @@ def get_audit():
     userId = request.args.get('id')
     action = request.args.get('action')
     query = query_builder.build_query(timerange = True, user_id = userId, action = action)
-    response = get_data("audit_logs", query)
+    result, count = get_data("audit_logs", query)
+    if result:
+        response = {"success":True, "data":result, "count":count}, 200
+    else:
+        response = {"success":False, "data":result, "count":count}, 400
     return response
 
 
@@ -123,13 +118,13 @@ def login_user():
         return response
     else:
         user_query = query_builder.build_query(timerange = False, user_id = userId)
-        user_data = get_data("user_details",user_query)
+        user_data, count = get_data("user_details",user_query)
         if not user_data:
             response = {"success":False, "message":"Please register user."}
         else:
-            if check_password_hash(user_data['data'][0]['password'], password):
+            if check_password_hash(user_data[0]['password'], password):
                 token = jwt.encode({
-                                    'user_id': user_data['data'][0]['user_id'],
+                                    'user_id': user_data[0]['user_id'],
                                     'exp' : datetime.utcnow() + timedelta(minutes = 60)
                                     }, app.config['SECRET_KEY'])
                 response = {"success":True, "message":"Login successful!", "token":token}, 200
