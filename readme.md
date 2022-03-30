@@ -11,9 +11,12 @@ This service is used to store and retrieve audit logs via HTTP requests. There a
 
 # Table of Contents
 
-1. audit_logger.py - Contains all the code
+1. app.py - Contains all the code
 2. config.yaml - Contains all config information. Can be extended as per requirement.
-3. query_builder.py - Contains the query building function for ES functionalities. Future scope is to extend this file to contain   all ES related activites.
+3. config.py - This file imports the config.yaml 
+4. es_service.py - This file handles all ES-related code/activities.
+5. auth_service.py - This file has all authentication related codes.
+5. requirements.txt - All dependencies that need to be installed.
 
 # Functionalities
 
@@ -46,3 +49,5 @@ command to execute is **python app.py** The platform supports I've used are:
 3. Postman - 9.15.6
 
 For CURL requests, please refer to curl_req.sh
+
+The github repository URL is **https://github.com/roshnipeter/audit_log**
